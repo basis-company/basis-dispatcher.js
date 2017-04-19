@@ -1,0 +1,27 @@
+{
+  "name": "basis-dispatcher",
+  "version": "0.1.0",
+  "description": "Basis dispatcher",
+  "main": "src/dispatcher.js",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/basis-company/basis-dispatcher.js.git"
+  },
+  "engines": {
+    "node": ">= 6.0.0"
+  },
+  "keywords": [
+    "basis",
+    "dispatcher"
+  ],
+  "author": "nekufa",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/basis-company/basis-dispatcher.js/issues"
+  },
+  "homepage": "https://github.com/basis-company/basis-dispatcher.js",
+  "dependencies": {
+    "etcdjs": "^2.4.2",
+    "request": "^2.76.0"
+  }
+}
