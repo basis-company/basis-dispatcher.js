@@ -4,11 +4,21 @@ var request = require('request');
 class Internal
 {
   bootstrap(config) {
+    var serviceExists = false;
     Object.keys(config).forEach(ns => {
       if(typeof(config[ns]) === 'object') {
         Object.keys(config[ns]).forEach(action => {
           if(typeof(config[ns][action]) == 'function') {
             var job = ns + '.' + action;
+            if(!serviceExists) {
+              serviceExists = true;
+              this.store.mkdir('/services');
+              this.store.get('/services/' + config.name, (e, r) => {
+                if(e || !r || !r.node) {
+                  this.store.set('/services/' + config.name, '');
+                }
+              });
+            }
             this.store.mkdir('/jobs');
             this.store.get('/jobs/' + job, (e, r) => {
               if(e || !r || !r.node) {
