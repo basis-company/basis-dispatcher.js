@@ -129,6 +129,39 @@ class Dispatcher
       });
     });
   }
+
+  api(req, res) {
+    try {
+      if(!req.body.rpc) {
+        throw 'no rpc';
+      }
+
+      var request = JSON.parse(req.body.rpc);
+      if(!request) {
+        throw 'invalid rpc';
+      }
+
+      if(!request.job) {
+        throw 'no rpc.job'
+      }
+
+      if(!request.params) {
+        throw 'no rpc.params'
+      }
+
+      return this.dispatch(request.job, request.params, {
+        'x-real-ip': req.headers['x-real-ip'],
+        'x-session': req.headers['x-session']
+      })
+        .then(data => {
+          res.send(JSON.stringify({data, success: true}));
+        });
+
+    } catch (error) {
+      message = error.message || error;
+      res.send(JSON.stringify({message, success: false}))
+    }
+  }
 }
 
 module.exports = Dispatcher
