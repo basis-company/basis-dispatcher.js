@@ -158,7 +158,7 @@ class Dispatcher
         });
 
     } catch (error) {
-      message = error.message || error;
+      var message = error.message || error;
       res.send(JSON.stringify({message, success: false}))
     }
   }
