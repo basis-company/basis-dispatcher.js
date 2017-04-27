@@ -64,7 +64,13 @@ class Dispatcher
 
     var handler = this.getLocalHandler(job);
     if(handler) {
-      return Promise.resolve(handler.bind(this)(params, headers));
+      return new Promise((resolve, reject) => {
+        try {
+          resolve(handler.bind(this)(params, headers));
+        } catch(e) {
+          reject(e);
+        }
+      });
     }
 
     var form = {
