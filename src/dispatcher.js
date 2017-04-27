@@ -66,7 +66,8 @@ class Dispatcher
     if(handler) {
       return new Promise((resolve, reject) => {
         try {
-          resolve(handler.bind(this)(params, headers));
+          var result = handler.bind(this)(params, headers) || {};
+          resolve(result);
         } catch(e) {
           reject(e);
         }
