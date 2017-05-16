@@ -22,9 +22,10 @@ class Internal
       });
   }
   reset() {
+    this.localHandlers = {};
+    this.invalidHandlers = {};
     this.remoteServices = {};
     this.remoteHandlers = {};
-    this.localHandlers = {};
     return {success: true};
   }
 }
@@ -112,6 +113,9 @@ class Dispatcher
   }
 
   getRemoteHandler(params) {
+    if(this.invalidHandlers.hasOwnProperty(params.job)) {
+      return Promise.reject('no job ' + params.job);
+    }
     if(this.remoteHandlers.hasOwnProperty(params.job)) {
       var hostname = this.remoteServices[params.job];
       if(process.env[this.remoteHandlers[params.job].host]) {
@@ -122,6 +126,7 @@ class Dispatcher
     return new Promise((resolve, reject) => {
       this.store.get('jobs/' + params.job + '/service', (error, result) => {
         if(error || !result) {
+          this.invalidHandlers[params.job] = true;
           return reject('no job ' + params.job);
         } else {
           var service = result.node.value;
