@@ -120,13 +120,13 @@ class Dispatcher
       return Promise.resolve('http://' + hostname + '/api');
     }
     return new Promise((resolve, reject) => {
-      this.store.get('/jobs/' + params.job + '/service', (error, result) => {
+      this.store.get('jobs/' + params.job + '/service', (error, result) => {
         if(error || !result) {
           return reject('no job ' + params.job);
         } else {
           var service = result.node.value;
           this.remoteServices[params.job] = service;
-          this.store.get('/services/' + service, (error, result) => {
+          this.store.get('services/' + service, (error, result) => {
             var config = {}
             result.node.nodes.forEach(param => {
               config[param.key.substr(result.node.key.length+1)] = param.value;
@@ -165,6 +165,10 @@ class Dispatcher
       })
         .then(data => {
           res.send(JSON.stringify({data, success: true}));
+        })
+        .catch(error => {
+          var message = error.message || error;
+          res.send(JSON.stringify({message, success: false}))
         });
 
     } catch (error) {
