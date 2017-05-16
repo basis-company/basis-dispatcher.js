@@ -4,31 +4,22 @@ var request = require('request');
 class Internal
 {
   bootstrap(config) {
-    var serviceExists = false;
-    Object.keys(config).forEach(ns => {
-      if(typeof(config[ns]) === 'object') {
-        Object.keys(config[ns]).forEach(action => {
-          if(typeof(config[ns][action]) == 'function') {
-            var job = ns + '.' + action;
-            if(!serviceExists) {
-              serviceExists = true;
-              this.store.mkdir('/services');
-              this.store.get('/services/' + config.name, (e, r) => {
-                if(e || !r || !r.node) {
-                  this.store.set('/services/' + config.name, '');
-                }
-              });
+
+    Object.keys(config)
+      .filter(ns => typeof(config[ns]) === 'object')
+      .forEach(ns => {
+        Object.keys(config[ns])
+        .filter(action => typeof(config[ns][action]) == 'function')
+        .forEach(action => {
+          var job = ns + '.' + action;
+          this.store.mkdir('/jobs');
+          this.store.get('/jobs/' + job, (e, r) => {
+            if(e || !r || !r.node) {
+              this.store.set('/jobs/' + job + '/service', config.service);
             }
-            this.store.mkdir('/jobs');
-            this.store.get('/jobs/' + job, (e, r) => {
-              if(e || !r || !r.node) {
-                this.store.set('/jobs/' + job, config.name);
-              }
-            });
-          }
+          });
         })
-      }
-    })
+      });
   }
   reset() {
     this.remoteServices = {};
@@ -48,15 +39,17 @@ class Dispatcher
 
     this.internal.reset.bind(this)()
 
-    if(config.name) {
-      this.dispatch('internal.bootstrap', config);
+    if(config.service) {
 
       this.store.mkdir('/services');
-      this.store.get('/services/' + config.name, (e, r) => {
+      this.store.get('/services/' + config.service, (e, r) => {
         if(e || !r || !r.node) {
-          this.store.set('/services/' + config.name)
+          this.store.set('/services/' + config.service + '/host', config.service.toUpperCase() + '_SERVICE_HOST');
+          this.store.set('/services/' + config.service + '/port', config.service.toUpperCase() + '_SERVICE_PORT');
         }
       });
+
+      this.dispatch('internal.bootstrap', config);
     }
   }
 
@@ -120,18 +113,28 @@ class Dispatcher
 
   getRemoteHandler(params) {
     if(this.remoteHandlers.hasOwnProperty(params.job)) {
-      var hostname = process.env[this.remoteHandlers[params.job]] || this.remoteServices[params.job];
+      var hostname = this.remoteServices[params.job];
+      if(process.env[this.remoteHandlers[params.job].host]) {
+        hostname = process.env[this.remoteHandlers[params.job].host] + ':' + process.env[this.remoteHandlers[params.job].port];
+      }
       return Promise.resolve('http://' + hostname + '/api');
     }
     return new Promise((resolve, reject) => {
-      this.store.get('/jobs/' + params.job, (error, result) => {
+      this.store.get('/jobs/' + params.job + '/service', (error, result) => {
         if(error || !result) {
           return reject('no job ' + params.job);
         } else {
           var service = result.node.value;
           this.remoteServices[params.job] = service;
-          this.remoteHandlers[params.job] = service.toUpperCase() + "_SERVICE_HOST";
-          return resolve(this.getRemoteHandler(params));
+          this.store.get('/services/' + service, (error, result) => {
+            var config = {}
+            result.node.nodes.forEach(param => {
+              config[param.key.substr(result.node.key.length+1)] = param.value;
+            })
+            this.remoteHandlers[params.job] = config;
+
+            resolve(this.getRemoteHandler(params));
+          });
         }
       });
     });
