@@ -23,9 +23,8 @@ class Internal
   }
   reset() {
     this.localHandlers = {};
-    this.invalidHandlers = {};
-    this.remoteServices = {};
-    this.remoteHandlers = {};
+    this.invalidJobs = {};
+    this.jobService = {};
     return {success: true};
   }
 }
@@ -113,33 +112,21 @@ class Dispatcher
   }
 
   getRemoteHandler(params) {
-    if(this.invalidHandlers.hasOwnProperty(params.job)) {
+    if(this.invalidJobs.hasOwnProperty(params.job)) {
       return Promise.reject('no job ' + params.job);
     }
-    if(this.remoteHandlers.hasOwnProperty(params.job)) {
-      var hostname = this.remoteServices[params.job];
-      if(process.env[this.remoteHandlers[params.job].host]) {
-        hostname = process.env[this.remoteHandlers[params.job].host] + ':' + process.env[this.remoteHandlers[params.job].port];
-      }
-      return Promise.resolve('http://' + hostname + '/api');
+    if(this.jobService.hasOwnProperty(params.job)) {
+      return Promise.resolve('http://' + this.jobService[params.job] + '/api');
     }
     return new Promise((resolve, reject) => {
       this.store.get('jobs/' + params.job + '/service', (error, result) => {
         if(error || !result) {
-          this.invalidHandlers[params.job] = true;
+          this.invalidJobs[params.job] = true;
           return reject('no job ' + params.job);
         } else {
           var service = result.node.value;
-          this.remoteServices[params.job] = service;
-          this.store.get('services/' + service, (error, result) => {
-            var config = {}
-            result.node.nodes.forEach(param => {
-              config[param.key.substr(result.node.key.length+1)] = param.value;
-            })
-            this.remoteHandlers[params.job] = config;
-
-            resolve(this.getRemoteHandler(params));
-          });
+          this.jobService[params.job] = service;
+          resolve(this.getRemoteHandler(params));
         }
       });
     });
