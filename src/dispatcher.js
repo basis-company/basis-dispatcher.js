@@ -5,6 +5,8 @@ class Internal
 {
   bootstrap(config) {
 
+    this.store.mkdir('/jobs');
+
     Object.keys(config)
       .filter(ns => typeof(config[ns]) === 'object')
       .forEach(ns => {
@@ -12,7 +14,6 @@ class Internal
         .filter(action => typeof(config[ns][action]) == 'function')
         .forEach(action => {
           var job = ns + '.' + action;
-          this.store.mkdir('/jobs');
           this.store.get('/jobs/' + job, (e, r) => {
             if(e || !r || !r.node) {
               this.store.set('/jobs/' + job + '/service', config.service);
@@ -40,15 +41,6 @@ class Dispatcher
     this.internal.reset.bind(this)()
 
     if(config.service) {
-
-      this.store.mkdir('/services');
-      this.store.get('/services/' + config.service, (e, r) => {
-        if(e || !r || !r.node) {
-          this.store.set('/services/' + config.service + '/host', config.service.toUpperCase() + '_SERVICE_HOST');
-          this.store.set('/services/' + config.service + '/port', config.service.toUpperCase() + '_SERVICE_PORT');
-        }
-      });
-
       this.dispatch('internal.bootstrap', config);
     }
   }
