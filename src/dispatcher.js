@@ -1,48 +1,18 @@
-var etcdjs = require('etcdjs')
+var etcdjs = require('etcdjs');
 var request = require('request');
-
-class Internal
-{
-  bootstrap(config) {
-
-    this.store.mkdir('/jobs');
-
-    Object.keys(config)
-      .filter(ns => typeof(config[ns]) === 'object')
-      .forEach(ns => {
-        Object.keys(config[ns])
-        .filter(action => typeof(config[ns][action]) == 'function')
-        .forEach(action => {
-          var job = ns + '.' + action;
-          this.store.get('/jobs/' + job, (e, r) => {
-            if(e || !r || !r.node) {
-              this.store.set('/jobs/' + job + '/service', config.service);
-            }
-          });
-        })
-      });
-  }
-  reset() {
-    this.localHandlers = {};
-    this.invalidJobs = {};
-    this.jobService = {};
-    return {success: true};
-  }
-}
 
 class Dispatcher
 {
   constructor(config) {
-
     this.config = config;
     this.store  = new etcdjs(config.host);
-    this.internal  = new Internal()
+    this.reset();
+  }
 
-    this.internal.reset.bind(this)()
-
-    if(config.service) {
-      this.dispatch('internal.bootstrap', config);
-    }
+  reset() {
+    this.localHandlers = {};
+    this.invalidJobs = {};
+    this.jobService = {};
   }
 
   dispatch(job, params = {}, headers = {}) {
@@ -66,7 +36,8 @@ class Dispatcher
     return this.getRemoteHandler({job})
       .then(url => {
         return new Promise(function(resolve, reject) {
-          request.post({url, headers, form}, (e, r, b) => {
+          var formData = {url, headers, form};
+          request.post(formData, (e, r, b) => {
             if(e) {
               reject(e);
 
@@ -74,18 +45,18 @@ class Dispatcher
               try {
                 resolve(JSON.parse(b));
 
-              } catch(e) {
-                reject(b)
+              } catch(error) {
+                reject(b);
               }
             }
           });
         });
-      })
+      });
   }
 
   getLocalHandler(job) {
 
-    if(this.localHandlers.hasOwnProperty(job)) {
+    if(this.localHandlers[job]) {
       return this.localHandlers[job];
     }
 
@@ -95,32 +66,30 @@ class Dispatcher
     var ns = split[0];
     var method = split[1];
 
-    [this, this.config].forEach(api => {
+    [this, this.config].forEach((api) => {
       if(api[ns] && api[ns][method]) {
         this.localHandlers[job] = api[ns][method];
       }
-    })
+    });
     return this.localHandlers[job];
   }
 
   getRemoteHandler(params) {
-    if(this.invalidJobs.hasOwnProperty(params.job)) {
+    if(this.invalidJobs[params.job]) {
       return Promise.reject('no job ' + params.job);
     }
-    if(this.jobService.hasOwnProperty(params.job)) {
+    if(this.jobService[params.job]) {
       return Promise.resolve('http://' + this.jobService[params.job] + '/api');
     }
     return new Promise((resolve, reject) => {
-      this.store.get('jobs/' + params.job + '/service', (error, result) => {
-        if(error || !result) {
-          this.invalidJobs[params.job] = true;
-          return reject('no job ' + params.job);
-        } else {
-          var service = result.node.value;
-          this.jobService[params.job] = service;
-          resolve(this.getRemoteHandler(params));
-        }
-      });
+      if(params.job.indexOf('.') === -1) {
+        this.invalidJobs[params.job] = true;
+        return reject('no job ' + params.job);
+      }
+
+      var service = params.job.split('.')[0];
+      this.jobService[params.job] = service;
+      resolve(this.getRemoteHandler(params));
     });
   }
 
@@ -136,30 +105,30 @@ class Dispatcher
       }
 
       if(!request.job) {
-        throw 'no rpc.job'
+        throw 'no rpc.job';
       }
 
       if(!request.params) {
-        throw 'no rpc.params'
+        throw 'no rpc.params';
       }
 
       return this.dispatch(request.job, request.params, {
         'x-real-ip': req.headers['x-real-ip'],
         'x-session': req.headers['x-session']
       })
-        .then(data => {
+        .then((data) => {
           res.send(JSON.stringify({data, success: true}));
         })
-        .catch(error => {
+        .catch((error) => {
           var message = error.message || error;
-          res.send(JSON.stringify({message, success: false}))
+          res.send(JSON.stringify({message, success: false}));
         });
 
     } catch (error) {
       var message = error.message || error;
-      res.send(JSON.stringify({message, success: false}))
+      res.send(JSON.stringify({message, success: false}));
     }
   }
 }
 
-module.exports = Dispatcher
+module.exports = Dispatcher;
