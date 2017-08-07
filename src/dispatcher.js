@@ -1,11 +1,9 @@
-var etcdjs = require('etcdjs');
 var request = require('request');
 
 class Dispatcher
 {
   constructor(config) {
     this.config = config;
-    this.store  = new etcdjs(config.host);
     this.reset();
   }
 

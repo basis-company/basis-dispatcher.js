@@ -1,6 +1,6 @@
 {
   "name": "basis-dispatcher",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "description": "Basis dispatcher",
   "main": "src/dispatcher.js",
   "repository": {
@@ -21,7 +21,6 @@
   },
   "homepage": "https://github.com/basis-company/basis-dispatcher.js",
   "dependencies": {
-    "etcdjs": "^2.4.2",
     "request": "^2.76.0"
   }
 }
